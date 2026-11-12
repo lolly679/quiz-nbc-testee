@@ -1,0 +1,8 @@
+{
+  "name": "quiz-nbc",
+  "version": "1.0.0",
+  "description": "Quiz multiplayer NBC TA 540 e 550",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administração · Quiz NBC 540 e 550</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#1f2352;--panel:#2c3275;--text:#fff7e6;--muted:#b9bdf0;--yellow:#ffd23f;--pink:#ff5d8f;--mint:#3ddc97;--blue:#4cc9f0}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:500 16px/1.4 Nunito,system-ui,sans-serif}
+h1,h2,h3{font-family:'Baloo 2',system-ui,sans-serif;margin:0;font-weight:800;line-height:1.1}
+button{font:inherit;font-weight:700;cursor:pointer;border:0;border-radius:12px;padding:11px 14px;color:#1f2352;background:var(--yellow)}
+button.sec{background:#3a2f8f;color:var(--text)}button.red{background:var(--pink);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+input,textarea{font:inherit;width:100%;padding:9px 11px;border-radius:10px;border:2px solid #4a52a8;background:#fff;color:#1f2352}
+.wrap{max-width:1250px;margin:0 auto;padding:16px}
+header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+header h1{font-size:28px;margin-right:auto}
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border-radius:18px;padding:16px;margin-bottom:16px}
+.stage{min-height:420px;background:radial-gradient(ellipse at 50% 0,#3a43a8 0,#2c3275 55%);border-radius:18px;padding:70px 10px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:56px 8px;align-content:start}
+.pl{position:relative;text-align:center;opacity:1}.pl.off{opacity:.45}
+.pl svg{width:64px;height:84px}
+.pl .nm{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .pt{font-family:'Baloo 2';font-weight:800;color:var(--yellow);font-size:18px;line-height:1}
+.pl .st{position:absolute;top:-4px;right:14px;font-size:20px}
+.pl .x{position:absolute;top:0;left:6px;padding:0 7px;border-radius:8px;background:#0006;color:#fff;font-size:14px;display:none}
+.pl:hover .x,.pl .x:focus{display:block}
+.bub{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);width:150px;background:#fff7e6;color:#1f2352;border-radius:12px;padding:6px 8px;font-size:12.5px;font-weight:700;line-height:1.25;margin-bottom:6px;z-index:2}
+.bub:after{content:"";position:absolute;top:100%;left:50%;margin-left:-6px;border:6px solid transparent;border-top-color:#fff7e6}
+@media(prefers-reduced-motion:no-preference){.bub{animation:pop .3s}@keyframes pop{from{transform:translateX(-50%) scale(.6);opacity:0}}}
+.rank{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #ffffff22}.rank span:nth-child(2){flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.row button{flex:1}
+#qr{background:#fff;padding:10px;border-radius:12px;width:fit-content;margin:10px auto}
+.link{word-break:break-all;font-size:13px;color:var(--muted);text-align:center}
+.qc{background:#3a2f8f;border-radius:14px;padding:12px;margin-bottom:12px}
+.qc .o{display:flex;gap:8px;align-items:center;margin-top:6px}.qc .o input[type=radio]{width:22px;height:22px;flex:none}
+.qc .nums{display:flex;gap:10px;margin-top:8px}.qc label{font-size:13px;color:var(--muted)}
+.muted{color:var(--muted)}.err{color:var(--pink);font-weight:700}
+.bigtxt{font-size:20px;font-weight:700}
+</style></head><body><div class="wrap" id="root"></div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let pw=sessionStorage.getItem('qpw')||'',tab='lobby',S=null,Q=[],offset=0,msg='',es=null,qrDone=false,loginErr='';
+async function api(act,body){
+  const r=await fetch('/api/admin/'+act,{method:'POST',headers:{'content-type':'application/json','x-pw':pw},body:JSON.stringify(body||{})});
+  return r.json().catch(()=>({}));
+}
+async function login(){
+  pw=$('pw').value;const r=await api('login');
+  if(r.ok){sessionStorage.setItem('qpw',pw);await loadQ();start()}else{loginErr='Senha incorreta.';render()}
+}
+async function loadQ(){const r=await fetch('/api/admin/questions',{headers:{'x-pw':pw}});if(r.ok)Q=await r.json()}
+function start(){
+  es=new EventSource('/events');
+  es.onmessage=e=>{S=JSON.parse(e.data);offset=S.now-Date.now();if(tab==='lobby')render()};
+  render();
+}
+function doll(c){return `<svg viewBox="0 0 64 84" aria-hidden="true"><rect x="19" y="58" width="11" height="20" rx="5" fill="#2b2f66"/><rect x="34" y="58" width="11" height="20" rx="5" fill="#2b2f66"/><rect x="6" y="32" width="12" height="26" rx="6" fill="${c}"/><rect x="46" y="32" width="12" height="26" rx="6" fill="${c}"/><rect x="14" y="30" width="36" height="34" rx="14" fill="${c}"/><circle cx="32" cy="17" r="14" fill="#ffd9b3"/><circle cx="27" cy="16" r="2.2" fill="#1f2352"/><circle cx="37" cy="16" r="2.2" fill="#1f2352"/><path d="M26 22q6 5 12 0" stroke="#1f2352" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`}
+function render(){
+  const root=$('root');
+  if(!es){
+    root.innerHTML=`<div class="panel" style="max-width:380px;margin:80px auto"><h1>Área do administrador</h1><p class="muted">Digite a senha para gerenciar o jogo.</p><input id="pw" type="password" placeholder="Senha" onkeydown="if(event.key==='Enter')login()"><div class="err">${loginErr}</div><div class="row"><button onclick="login()">Entrar</button></div></div>`;
+    return;
+  }
+  let h=`<header><h1>Quiz NBC 540 e 550</h1><button class="${tab==='lobby'?'':'sec'}" onclick="tab='lobby';render()">Lobby</button><button class="${tab==='q'?'':'sec'}" onclick="tab='q';render()">Perguntas (${Q.length})</button></header>`;
+  h+=tab==='lobby'?lobby():questions();
+  root.innerHTML=h;
+  if(tab==='lobby')drawQR();
+}
+function lobby(){
+  const ph=S.phase,q=S.question,mq=Q[S.q];
+  const sorted=[...S.players].sort((a,b)=>b.points-a.points);
+  let status='';
+  if(ph==='lobby')status=`<div class="bigtxt">Sala aberta</div><div class="muted">${S.players.length}/${S.max} jogadores. Quando todos entrarem, inicie.</div>`;
+  if(ph==='question')status=`<div class="muted">Pergunta ${S.q+1}/${S.total}</div><div class="bigtxt">${esc(q.text)}</div><div class="muted">Respostas: ${S.players.filter(p=>p.answered).length}/${S.players.filter(p=>p.online&&!p.blocked).length} · resposta certa: <b>${mq?'ABCD'[mq.correct]:'?'}</b> · <span id="tm"></span></div>`;
+  if(ph==='reveal'){const w=S.players.find(p=>p.id===S.firstId);status=`<div class="muted">Pergunta ${S.q+1}/${S.total} revelada</div><div class="bigtxt">${w?'⚡ '+esc(w.name)+' foi o mais rápido':'Ninguém acertou'}</div><div class="muted">${S.powerFor?'Aguardando o jogador escolher o poder…':'Poder já usado ou sem vencedor.'}</div>`}
+  if(ph==='ended')status=`<div class="bigtxt">🏁 Jogo encerrado</div><div class="muted">${sorted[0]?'Campeão: '+esc(sorted[0].name)+' com '+sorted[0].points+' pts':''}</div>`;
+  const last=S.q+1>=S.total;
+  const nextLabel=ph==='lobby'?'▶ Iniciar jogo':last?'🏁 Ver resultado final':'▶ Próxima pergunta';
+  const stage=S.players.length?S.players.map(p=>{const b=S.bubbles[p.id];return `<div class="pl ${p.online?'':'off'}">${b?`<div class="bub">${esc(b.text)}</div>`:''}${p.blocked?'<span class="st" title="bloqueado">🚫</span>':p.allin?'<span class="st" title="tudo ou nada">🎲</span>':''}<button class="x" title="Remover ${esc(p.name)}" onclick="kick('${p.id}')">×</button>${doll(p.color)}<div class="nm">${esc(p.name)}</div><div class="pt">${p.points}</div></div>`}).join(''):'<p class="muted" style="grid-column:1/-1;text-align:center">Ninguém entrou ainda. Mostre o QR code ao lado.</p>';
+  return `<div class="main"><div><div class="panel">${status}</div><div class="stage">${stage}</div></div><div>
+   <div class="panel"><h3>Entrar no jogo</h3><div id="qr"></div><div class="link">${esc(location.origin)}</div></div>
+   <div class="panel"><h3>Controles</h3><div class="row"><button ${ph==='question'||!S.total?'disabled':''} onclick="api('next')">${nextLabel}</button></div>
+   <div class="row"><button class="sec" ${ph==='question'?'':'disabled'} onclick="api('reveal')">Revelar agora</button><button class="sec" onclick="if(confirm('Encerrar o jogo agora?'))api('end')">Encerrar</button></div>
+   <div class="row"><button class="red" onclick="if(confirm('Zerar pontos e voltar ao lobby? Os jogadores continuam na sala.'))api('reset')">Reiniciar</button></div>
+   ${S.total?'':'<p class="err">Cadastre perguntas na aba Perguntas.</p>'}</div>
+   <div class="panel"><h3>Placar</h3>${sorted.map((p,i)=>`<div class="rank"><span>${i+1}º</span><span>${esc(p.name)}</span><b>${p.points}</b></div>`).join('')||'<span class="muted">Sem jogadores.</span>'}</div></div></div>`;
+}
+function drawQR(){
+  const el=$('qr');if(!el||typeof QRCode==='undefined')return;
+  new QRCode(el,{text:location.origin+'/',width:200,height:200});
+}
+async function kick(id){await api('kick',{id})}
+function questions(){
+  let h=`<div class="panel"><p class="muted">Cada pergunta tem de 2 a 4 alternativas. Marque a bolinha da resposta certa. Lembre de salvar.</p><div class="row"><button onclick="addQ()">+ Nova pergunta</button><button onclick="saveQ()">Salvar perguntas</button></div><div class="${msg.startsWith('✔')?'':'err'}" style="margin-top:8px">${esc(msg)}</div></div>`;
+  h+=Q.map((q,i)=>`<div class="qc"><b>Pergunta ${i+1}</b><textarea rows="2" placeholder="Enunciado" oninput="Q[${i}].text=this.value">${esc(q.text)}</textarea>`+
+   [0,1,2,3].map(k=>`<div class="o"><input type="radio" name="c${i}" ${q.correct===k?'checked':''} onchange="Q[${i}].correct=${k}" aria-label="Alternativa ${'ABCD'[k]} é a correta"><span>${'ABCD'[k]}</span><input value="${esc(q.options[k]||'')}" placeholder="Alternativa ${'ABCD'[k]}" oninput="Q[${i}].options[${k}]=this.value"></div>`).join('')+
+   `<div class="nums"><label>Pontos<input type="number" min="10" max="1000" value="${q.points}" oninput="Q[${i}].points=+this.value"></label><label>Tempo (s)<input type="number" min="5" max="120" value="${q.time}" oninput="Q[${i}].time=+this.value"></label><button class="red" style="align-self:end" onclick="delQ(${i})">Excluir</button></div></div>`).join('');
+  return h||'';
+}
+function addQ(){Q.push({text:'',options:['','','',''],correct:0,points:100,time:20});msg='';render()}
+function delQ(i){if(confirm('Excluir esta pergunta?')){Q.splice(i,1);render()}}
+async function saveQ(){
+  const out=Q.map(q=>{const opts=q.options.map(o=>o.trim());let c=q.correct;
+    // mantém a posição da correta ao remover alternativas vazias
+    const kept=[];opts.forEach((o,k)=>{if(o)kept.push(k)});
+    return {text:q.text,options:kept.map(k=>opts[k]),correct:kept.indexOf(c),points:q.points,time:q.time}});
+  const r=await api('questions',{questions:out});
+  if(r.ok){await loadQ();msg='✔ Perguntas salvas.'}else msg=r.error||'Erro ao salvar.';
+  render();
+}
+setInterval(()=>{const t=$('tm');if(t&&S&&S.phase==='question')t.textContent=Math.max(0,Math.ceil((S.endsAt-(Date.now()+offset))/1000))+'s restantes'},300);
+if(pw){api('login').then(async r=>{if(r.ok){await loadQ();start()}else{pw='';render()}})}else render();
+</script></body></html>
